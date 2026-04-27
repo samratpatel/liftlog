@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f0f0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Lift Log</title>
+<link rel="manifest" href="manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #242424;
+  --border: #2e2e2e;
+  --accent: #c8f550;
+  --accent-dim: #8aab32;
+  --text: #f0f0f0;
+  --text2: #888;
+  --text3: #555;
+  --danger: #ff5a5a;
+  --bike: #4da6ff;
+  --run: #ff8c42;
+  --swim: #4dd9c0;
+  --radius: 12px;
+  --tab-h: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; overscroll-behavior: none; }
+#app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; position: relative; }
+
+/* HEADER */
+.header { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.header-row { display: flex; align-items: center; justify-content: space-between; }
+.header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+.header h1 span { color: var(--accent); }
+.header-sub { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* SCROLL */
+.scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 20px; padding-bottom: calc(var(--tab-h) + var(--safe-bottom) + 16px); }
+
+/* TAB BAR */
+.tab-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: calc(var(--tab-h) + var(--safe-bottom)); background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: var(--safe-bottom); }
+.tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: none; border: none; color: var(--text3); font-family: 'Syne', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 0.04em; cursor: pointer; transition: color 0.15s; }
+.tab-btn.active { color: var(--accent); }
+.tab-btn svg { width: 20px; height: 20px; }
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+
+/* CARDS */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+
+/* FIELDS */
+.field { margin-bottom: 14px; }
+.field label { display: block; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+.field select, .field input[type="text"], .field input[type="date"], .field input[type="number"], .field textarea {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 15px; padding: 11px 13px; outline: none; appearance: none; -webkit-appearance: none;
+}
+.field select:focus, .field input:focus, .field textarea:focus { border-color: var(--accent); }
+.field textarea { resize: none; height: 72px; }
+select option { background: #1a1a1a; }
+
+/* PILL */
+.pill { display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 44px; }
+.pill-btn { width: 48px; height: 100%; background: none; border: none; color: var(--text); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s; flex-shrink: 0; }
+.pill-btn:active { background: var(--border); }
+.pill-btn:disabled { color: var(--text3); }
+.pill-val { flex: 1; text-align: center; font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; color: var(--text); }
+.pill-input { flex: 1; background: none; border: none; text-align: center; font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; color: var(--text); outline: none; width: 100%; padding: 0; }
+.pill-sep { width: 1px; height: 28px; background: var(--border); flex-shrink: 0; }
+
+/* SEGMENTED */
+.seg { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg-btn { flex: 1; padding: 9px 4px; background: none; border: none; color: var(--text2); font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; text-align: center; }
+.seg-btn.active { background: var(--accent); color: #0f0f0f; }
+
+/* BUTTONS */
+.btn-primary { width: 100%; padding: 15px; background: var(--accent); border: none; border-radius: var(--radius); color: #0f0f0f; font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; letter-spacing: 0.02em; transition: opacity 0.15s, transform 0.1s; }
+.btn-primary:active { opacity: 0.85; transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.35; }
+.btn-secondary { width: 100%; padding: 13px; background: none; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+.btn-secondary:active { border-color: var(--accent); color: var(--accent); }
+.btn-ghost { background: none; border: none; color: var(--text2); font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px 10px; }
+.btn-ghost:active { color: var(--accent); }
+
+/* COPY LAST */
+.copy-last-btn { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; padding: 10px 14px; cursor: pointer; width: 100%; margin-bottom: 16px; transition: border-color 0.15s; }
+.copy-last-btn:active { border-color: var(--accent); color: var(--accent); }
+
+/* HISTORY */
+.history-entry { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+.history-entry:last-child { border-bottom: none; }
+.history-entry:active { background: var(--surface2); }
+.history-entry-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.history-entry-detail { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
+.history-entry-notes { font-size: 12px; color: var(--text3); margin-top: 3px; font-style: italic; }
+.history-day-header { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; padding: 10px 16px 6px; }
+
+/* BADGES */
+.badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; }
+.badge-focus { background: #1e2e00; color: var(--accent); }
+.badge-effort-easy { background: #0e2020; color: #4dd; }
+.badge-effort-moderate { background: #201e00; color: #dd4; }
+.badge-effort-hard { background: #2a0e0e; color: var(--danger); }
+.badge-bike { background: #0d1f33; color: var(--bike); }
+.badge-run { background: #2a1a0a; color: var(--run); }
+.badge-swim { background: #0a2220; color: var(--swim); }
+.badge-cardio { background: #1a1a2e; color: #a0a0ff; }
+
+/* EXERCISE LIST */
+.exercise-item { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid var(--border); }
+.exercise-item:last-child { border-bottom: none; }
+.exercise-item-name { font-size: 14px; font-weight: 600; }
+.exercise-item-actions { display: flex; gap: 6px; }
+.icon-btn { background: none; border: none; color: var(--text3); cursor: pointer; padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: color 0.1s, background 0.1s; }
+.icon-btn:active { color: var(--text); background: var(--surface2); }
+.icon-btn.danger:active { color: var(--danger); }
+
+/* PROGRESS */
+.progress-selector { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.chart-wrap { position: relative; width: 100%; }
+.chart-empty { text-align: center; padding: 40px 20px; color: var(--text3); font-size: 14px; }
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+.stat-val { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500; color: var(--accent); }
+.stat-label { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+/* EXPORT */
+.export-section { margin-bottom: 16px; }
+.export-section h3 { font-size: 13px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+
+/* TOAST */
+.toast { position: fixed; bottom: calc(var(--tab-h) + var(--safe-bottom) + 16px); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--accent); color: #0f0f0f; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; padding: 10px 20px; border-radius: 100px; opacity: 0; transition: all 0.25s; pointer-events: none; white-space: nowrap; z-index: 200; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* MODALS */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; max-height: 90dvh; overflow-y: auto; padding: 20px 20px calc(20px + var(--safe-bottom)); animation: slideUp 0.25s ease; }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.modal-title { font-size: 18px; font-weight: 800; }
+
+/* ACTIVITY TYPE SELECTOR */
+.activity-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.activity-btn { padding: 16px 8px; background: var(--surface2); border: 2px solid var(--border); border-radius: 10px; color: var(--text2); font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; text-align: center; transition: all 0.15s; }
+.activity-btn .act-icon { font-size: 24px; display: block; margin-bottom: 4px; }
+.activity-btn.active-bike { border-color: var(--bike); color: var(--bike); background: #0d1f33; }
+.activity-btn.active-run { border-color: var(--run); color: var(--run); background: #2a1a0a; }
+.activity-btn.active-swim { border-color: var(--swim); color: var(--swim); background: #0a2220; }
+
+/* ZONE SELECTOR */
+.zone-selector { display: flex; gap: 6px; }
+.zone-btn { flex: 1; padding: 10px 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; cursor: pointer; text-align: center; transition: all 0.15s; }
+.zone-btn.active { color: #0f0f0f; }
+.zone-btn[data-zone="1"].active { background: #4dd9c0; border-color: #4dd9c0; }
+.zone-btn[data-zone="2"].active { background: #7ecf5a; border-color: #7ecf5a; }
+.zone-btn[data-zone="3"].active { background: #c8f550; border-color: #c8f550; }
+.zone-btn[data-zone="4"].active { background: #ff8c42; border-color: #ff8c42; }
+.zone-btn[data-zone="5"].active { background: #ff5a5a; border-color: #ff5a5a; }
+
+.filter-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.filter-row select { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 13px; padding: 8px 10px; outline: none; appearance: none; -webkit-appearance: none; }
+.empty { text-align: center; padding: 60px 20px; color: var(--text3); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty p { font-size: 14px; }
+.divider { height: 1px; background: var(--border); margin: 12px 0; }
+.section-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-row">
+      <h1>LIFT<span>LOG</span></h1>
+      <span id="header-date" class="header-sub"></span>
+    </div>
+  </div>
+
+  <div class="scroll-area">
+
+    <!-- ── LOG TAB ── -->
+    <div id="page-log" class="page active">
+      <button class="copy-last-btn" id="copy-last-btn" onclick="copyLast()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy Last Entry
+      </button>
+      <div class="card">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="log-date">
+        </div>
+        <div class="field">
+          <label>Exercise</label>
+          <select id="log-exercise"><option value="">Select exercise…</option></select>
+        </div>
+        <div class="field">
+          <label>Focus</label>
+          <div class="seg" id="log-focus">
+            <button class="seg-btn" data-val="Strength">Strength</button>
+            <button class="seg-btn active" data-val="Hypertrophy">Hypertrophy</button>
+            <button class="seg-btn" data-val="Skill">Skill</button>
+            <button class="seg-btn" data-val="Maintenance">Maint.</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Sets</label>
+          <div class="pill">
+            <button class="pill-btn" onclick="adjustSets(-1)">−</button>
+            <div class="pill-sep"></div>
+            <div class="pill-val" id="sets-val">3</div>
+            <div class="pill-sep"></div>
+            <button class="pill-btn" onclick="adjustSets(1)">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Reps</label>
+          <div class="pill">
+            <button class="pill-btn" onclick="adjustReps(-1)">−</button>
+            <div class="pill-sep"></div>
+            <div class="pill-val" id="reps-val">10</div>
+            <div class="pill-sep"></div>
+            <button class="pill-btn" onclick="adjustReps(1)">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Load</label>
+          <div class="pill">
+            <button class="pill-btn" id="load-minus" onclick="adjustLoad(-5)">−</button>
+            <div class="pill-sep"></div>
+            <input class="pill-input" id="load-input" type="number" inputmode="decimal" placeholder="0" min="0">
+            <div class="pill-sep"></div>
+            <button class="pill-btn" id="load-plus" onclick="adjustLoad(5)">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Unit</label>
+          <div class="seg" id="log-unit">
+            <button class="seg-btn active" data-val="lb">lb</button>
+            <button class="seg-btn" data-val="kg">kg</button>
+            <button class="seg-btn" data-val="BW">BW</button>
+            <button class="seg-btn" data-val="plates">plates</button>
+            <button class="seg-btn" data-val="band">band</button>
+            <button class="seg-btn" data-val="m">m</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Effort</label>
+          <div class="seg" id="log-effort">
+            <button class="seg-btn" data-val="Easy">Easy</button>
+            <button class="seg-btn active" data-val="Moderate">Moderate</button>
+            <button class="seg-btn" data-val="Hard">Hard</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Notes (optional)</label>
+          <textarea id="log-notes" placeholder="Any notes…"></textarea>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="saveEntry()">Save Entry</button>
+    </div>
+
+    <!-- ── CARDIO TAB ── -->
+    <div id="page-cardio" class="page">
+      <div class="card">
+        <div class="field">
+          <label>Activity</label>
+          <div class="activity-selector">
+            <button class="activity-btn active-bike" id="act-bike" onclick="selectActivity('bike')">
+              <span class="act-icon">🚴</span>Bike
+            </button>
+            <button class="activity-btn" id="act-run" onclick="selectActivity('run')">
+              <span class="act-icon">🏃</span>Run
+            </button>
+            <button class="activity-btn" id="act-swim" onclick="selectActivity('swim')">
+              <span class="act-icon">🏊</span>Swim
+            </button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="cardio-date">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field" style="margin-bottom:0">
+            <label>Duration (min)</label>
+            <input type="number" id="cardio-duration" inputmode="decimal" placeholder="45" min="0">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label id="cardio-dist-label">Distance (mi)</label>
+            <input type="number" id="cardio-distance" inputmode="decimal" placeholder="0.0" min="0" step="0.1">
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label>Zone (Garmin 1–5)</label>
+          <div class="zone-selector">
+            <button class="zone-btn" data-zone="1" onclick="selectZone(1)">Z1</button>
+            <button class="zone-btn" data-zone="2" onclick="selectZone(2)">Z2</button>
+            <button class="zone-btn active" data-zone="3" onclick="selectZone(3)">Z3</button>
+            <button class="zone-btn" data-zone="4" onclick="selectZone(4)">Z4</button>
+            <button class="zone-btn" data-zone="5" onclick="selectZone(5)">Z5</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Notes (optional)</label>
+          <textarea id="cardio-notes" placeholder="How'd it feel…"></textarea>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="saveCardio()">Save Cardio</button>
+
+      <div style="margin-top:20px;">
+        <div class="section-label">Recent cardio</div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div id="cardio-recent-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HISTORY TAB ── -->
+    <div id="page-history" class="page">
+      <div class="filter-row">
+        <select id="filter-exercise" onchange="renderHistory()">
+          <option value="">All exercises</option>
+        </select>
+        <select id="filter-focus" onchange="renderHistory()">
+          <option value="">All focus</option>
+          <option>Strength</option><option>Hypertrophy</option><option>Skill</option><option>Maintenance</option>
+        </select>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div id="history-list"></div>
+      </div>
+    </div>
+
+    <!-- ── PROGRESS TAB ── -->
+    <div id="page-progress" class="page">
+      <div class="section-label">Lifting progression</div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="field" style="margin-bottom:10px;">
+          <label>Exercise</label>
+          <select id="prog-exercise" onchange="renderProgress()">
+            <option value="">Select exercise…</option>
+          </select>
+        </div>
+        <div class="seg" id="prog-metric" style="margin-bottom:12px;">
+          <button class="seg-btn active" data-val="load" onclick="progMetricChange(this)">Load</button>
+          <button class="seg-btn" data-val="volume" onclick="progMetricChange(this)">Volume</button>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="lift-chart" height="200"></canvas>
+          <div class="chart-empty" id="lift-chart-empty">Select an exercise to see progression</div>
+        </div>
+        <div class="stat-row" id="lift-stats" style="margin-top:12px;display:none;">
+          <div class="stat-box"><div class="stat-val" id="stat-max">—</div><div class="stat-label">Max load</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-sessions">—</div><div class="stat-label">Sessions</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-recent">—</div><div class="stat-label">Last load</div></div>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:4px;">Cardio progression</div>
+      <div class="card">
+        <div class="seg" id="cardio-prog-type" style="margin-bottom:12px;">
+          <button class="seg-btn active" data-val="bike" onclick="cardioTypeChange(this)">🚴 Bike</button>
+          <button class="seg-btn" data-val="run" onclick="cardioTypeChange(this)">🏃 Run</button>
+          <button class="seg-btn" data-val="swim" onclick="cardioTypeChange(this)">🏊 Swim</button>
+        </div>
+        <div class="seg" id="cardio-prog-metric" style="margin-bottom:12px;">
+          <button class="seg-btn active" data-val="distance" onclick="cardioMetricChange(this)">Distance</button>
+          <button class="seg-btn" data-val="duration" onclick="cardioMetricChange(this)">Duration</button>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="cardio-chart" height="200"></canvas>
+          <div class="chart-empty" id="cardio-chart-empty">No cardio data yet</div>
+        </div>
+        <div class="stat-row" id="cardio-stats" style="margin-top:12px;display:none;">
+          <div class="stat-box"><div class="stat-val" id="cstat-total">—</div><div class="stat-label">Total dist.</div></div>
+          <div class="stat-box"><div class="stat-val" id="cstat-sessions">—</div><div class="stat-label">Sessions</div></div>
+          <div class="stat-box"><div class="stat-val" id="cstat-avg">—</div><div class="stat-label">Avg dist.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS TAB ── -->
+    <div id="page-settings" class="page">
+      <div class="export-section">
+        <h3>Exercises</h3>
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
+          <div id="exercises-list"></div>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <div class="field" style="margin-bottom:10px;">
+            <label>Add New Exercise</label>
+            <input type="text" id="new-exercise-input" placeholder="e.g. Romanian Deadlift">
+          </div>
+          <button class="btn-primary" onclick="addExercise()" style="padding:12px;">Add Exercise</button>
+        </div>
+      </div>
+
+      <div class="export-section">
+        <h3>Export data</h3>
+        <div class="card">
+          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Export your data as CSV — opens in Excel, Google Sheets, or Numbers. Lifting and cardio are exported as separate sheets in separate files.</p>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="btn-primary" onclick="exportLifting()">⬇ Export Lifting Log (CSV)</button>
+            <button class="btn-secondary" onclick="exportCardio()">⬇ Export Cardio Log (CSV)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-section" style="margin-top:4px;">
+        <h3>Data</h3>
+        <div class="card">
+          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;" id="data-summary-text"></p>
+          <button class="btn-secondary" style="color:var(--danger);border-color:var(--danger);font-size:13px;" onclick="clearAllData()">Clear all data</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end scroll-area -->
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-log" onclick="switchTab('log')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      LOG
+    </button>
+    <button class="tab-btn" id="tab-cardio" onclick="switchTab('cardio')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      CARDIO
+    </button>
+    <button class="tab-btn" id="tab-history" onclick="switchTab('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      HISTORY
+    </button>
+    <button class="tab-btn" id="tab-progress" onclick="switchTab('progress')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      PROGRESS
+    </button>
+    <button class="tab-btn" id="tab-settings" onclick="switchTab('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      MORE
+    </button>
+  </div>
+</div><!-- end app -->
+
+<div class="toast" id="toast"></div>
+
+<!-- EDIT LIFT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Entry</div>
+      <button class="btn-ghost" onclick="closeModal('edit-modal')">✕ Cancel</button>
+    </div>
+    <div id="edit-modal-body"></div>
+  </div>
+</div>
+
+<!-- EDIT CARDIO MODAL -->
+<div class="modal-overlay" id="edit-cardio-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Cardio</div>
+      <button class="btn-ghost" onclick="closeModal('edit-cardio-modal')">✕ Cancel</button>
+    </div>
+    <div id="edit-cardio-body"></div>
+  </div>
+</div>
+
+<!-- RENAME MODAL -->
+<div class="modal-overlay" id="rename-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Rename Exercise</div>
+      <button class="btn-ghost" onclick="closeModal('rename-modal')">✕</button>
+    </div>
+    <div class="field">
+      <label>Exercise name</label>
+      <input type="text" id="rename-input" placeholder="Exercise name">
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:16px;">History will be updated to use the new name.</p>
+    <button class="btn-primary" onclick="confirmRename()">Save</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── STATE ──
+const DEFAULT_EXERCISES = [
+  "Back Extension – Machine","Bench Press – Barbell","Farmer Carry – Dumbbell",
+  "Incline Press – Barbell","Lat Pulldown – Cable","Lat Pulldown – Plate Loaded",
+  "Leg Press – Machine","Pull-up – Band Assisted (Green)","Pull-up – Strict","Seated Row – Cable"
+];
+
+let sets = 3, reps = 10;
+let focusVal = 'Hypertrophy', effortVal = 'Moderate', unitVal = 'lb';
+let cardioActivity = 'bike', cardioZone = 3;
+let editingEntryId = null, editingCardioId = null, renamingExercise = null;
+let progMetric = 'load', cardioProgType = 'bike', cardioProgMetric = 'distance';
+let liftChartInst = null, cardioChartInst = null;
+
+// ── STORAGE ──
+function getData() {
+  const raw = localStorage.getItem('liftlog_v2');
+  if (!raw) return { exercises: DEFAULT_EXERCISES, entries: [], cardio: [] };
+  try {
+    const d = JSON.parse(raw);
+    if (!d.cardio) d.cardio = [];
+    return d;
+  } catch { return { exercises: DEFAULT_EXERCISES, entries: [], cardio: [] }; }
+}
+function saveData(data) { localStorage.setItem('liftlog_v2', JSON.stringify(data)); }
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date();
+  document.getElementById('log-date').value = toDateStr(today);
+  document.getElementById('cardio-date').value = toDateStr(today);
+  document.getElementById('header-date').textContent = today.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase();
+
+  setupSeg('log-focus', v => focusVal = v);
+  setupSeg('log-unit', v => {
+    unitVal = v;
+    const isBW = v === 'BW';
+    document.getElementById('load-input').disabled = isBW;
+    document.getElementById('load-minus').disabled = isBW;
+    document.getElementById('load-plus').disabled = isBW;
+    if (isBW) document.getElementById('load-input').value = '';
+  });
+  setupSeg('log-effort', v => effortVal = v);
+
+  populateExerciseDropdowns();
+  renderExercises();
+  renderHistory();
+  renderCardioRecent();
+  updateCopyLastBtn();
+  updateDataSummary();
+});
+
+// ── UTILS ──
+function toDateStr(d) { return d.toISOString().split('T')[0]; }
+function fromDateStr(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); }
+function esc(s) {
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  editingEntryId = null; editingCardioId = null; renamingExercise = null;
+}
+
+// ── SEGMENTED ──
+function setupSeg(id, onChange) {
+  document.getElementById(id).querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.closest('.seg').querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      onChange(btn.dataset.val);
+    });
+  });
+}
+function setSegValue(segId, val) {
+  document.getElementById(segId).querySelectorAll('.seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === val);
+  });
+}
+
+// ── TABS ──
+function switchTab(tab) {
+  ['log','cardio','history','progress','settings'].forEach(t => {
+    document.getElementById(`page-${t}`).classList.toggle('active', t===tab);
+    document.getElementById(`tab-${t}`).classList.toggle('active', t===tab);
+  });
+  if (tab==='history') renderHistory();
+  if (tab==='exercises'||tab==='settings') { renderExercises(); updateDataSummary(); }
+  if (tab==='progress') { populateProgExercise(); renderProgress(); renderCardioProgress(); }
+  if (tab==='cardio') renderCardioRecent();
+}
+
+// ── STEPPERS ──
+function adjustSets(d) { sets=Math.min(20,Math.max(1,sets+d)); document.getElementById('sets-val').textContent=sets; }
+function adjustReps(d) { reps=Math.min(100,Math.max(1,reps+d)); document.getElementById('reps-val').textContent=reps; }
+function adjustLoad(d) {
+  const inp=document.getElementById('load-input');
+  inp.value=Math.max(0,(parseFloat(inp.value)||0)+d)||'';
+}
+
+// ── EXERCISES ──
+function populateExerciseDropdowns() {
+  const data=getData(), exs=data.exercises.slice().sort((a,b)=>a.localeCompare(b));
+  const logSel=document.getElementById('log-exercise');
+  const filterSel=document.getElementById('filter-exercise');
+  const progSel=document.getElementById('prog-exercise');
+  const prev=logSel.value;
+  logSel.innerHTML='<option value="">Select exercise…</option>';
+  filterSel.innerHTML='<option value="">All exercises</option>';
+  progSel.innerHTML='<option value="">Select exercise…</option>';
+  exs.forEach(ex=>{
+    logSel.innerHTML+=`<option value="${esc(ex)}">${esc(ex)}</option>`;
+    filterSel.innerHTML+=`<option value="${esc(ex)}">${esc(ex)}</option>`;
+    progSel.innerHTML+=`<option value="${esc(ex)}">${esc(ex)}</option>`;
+  });
+  if(prev) logSel.value=prev;
+}
+
+function renderExercises() {
+  const data=getData(), sorted=data.exercises.slice().sort((a,b)=>a.localeCompare(b));
+  const list=document.getElementById('exercises-list');
+  if(!sorted.length){list.innerHTML='<div class="empty"><div class="empty-icon">🏋️</div><p>No exercises yet</p></div>';return;}
+  list.innerHTML=sorted.map(ex=>`
+    <div class="exercise-item">
+      <div class="exercise-item-name">${esc(ex)}</div>
+      <div class="exercise-item-actions">
+        <button class="icon-btn" onclick="startRename('${ex.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="icon-btn danger" onclick="deleteExercise('${ex.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+function addExercise() {
+  const inp=document.getElementById('new-exercise-input'), name=inp.value.trim();
+  if(!name){return;}
+  const data=getData();
+  if(data.exercises.some(e=>e.toLowerCase()===name.toLowerCase())){showToast('Already exists');return;}
+  data.exercises.push(name); saveData(data); inp.value='';
+  populateExerciseDropdowns(); renderExercises(); showToast('Exercise added');
+}
+
+function deleteExercise(name) {
+  if(!confirm(`Delete "${name}"?`))return;
+  const data=getData(); data.exercises=data.exercises.filter(e=>e!==name);
+  saveData(data); populateExerciseDropdowns(); renderExercises(); showToast('Deleted');
+}
+
+function startRename(name) {
+  renamingExercise=name;
+  document.getElementById('rename-input').value=name;
+  document.getElementById('rename-modal').classList.add('open');
+}
+function confirmRename() {
+  const newName=document.getElementById('rename-input').value.trim();
+  if(!newName||!renamingExercise)return;
+  if(newName===renamingExercise){closeModal('rename-modal');return;}
+  const data=getData();
+  data.exercises=data.exercises.filter(e=>e!==renamingExercise);
+  if(!data.exercises.some(e=>e.toLowerCase()===newName.toLowerCase())) data.exercises.push(newName);
+  data.entries=data.entries.map(e=>({...e,exerciseName:e.exerciseName===renamingExercise?newName:e.exerciseName}));
+  saveData(data); closeModal('rename-modal');
+  populateExerciseDropdowns(); renderExercises(); renderHistory(); showToast('Renamed');
+}
+
+// ── SAVE LIFT ENTRY ──
+function saveEntry() {
+  const exercise=document.getElementById('log-exercise').value;
+  if(!exercise){showToast('Select an exercise first');return;}
+  const dateStr=document.getElementById('log-date').value;
+  const load=unitVal==='BW'?0:(parseFloat(document.getElementById('load-input').value)||0);
+  const notes=document.getElementById('log-notes').value.trim();
+  const entry={id:crypto.randomUUID(),date:dateStr,exerciseName:exercise,focus:focusVal,sets,reps,load,loadUnit:unitVal,effort:effortVal,notes};
+  const data=getData();
+  data.entries.unshift(entry);
+  if(!data.exercises.includes(exercise)) data.exercises.push(exercise);
+  saveData(data);
+  document.getElementById('log-notes').value='';
+  document.getElementById('log-date').value=toDateStr(new Date());
+  updateCopyLastBtn(); showToast('Entry saved ✓');
+}
+
+function copyLast() {
+  const data=getData(); if(!data.entries.length)return;
+  const last=data.entries[0];
+  document.getElementById('log-exercise').value=last.exerciseName;
+  sets=last.sets; document.getElementById('sets-val').textContent=sets;
+  reps=last.reps; document.getElementById('reps-val').textContent=reps;
+  focusVal=last.focus; setSegValue('log-focus',focusVal);
+  effortVal=last.effort; setSegValue('log-effort',effortVal);
+  unitVal=last.loadUnit; setSegValue('log-unit',unitVal);
+  const isBW=unitVal==='BW';
+  document.getElementById('load-input').disabled=isBW;
+  document.getElementById('load-minus').disabled=isBW;
+  document.getElementById('load-plus').disabled=isBW;
+  document.getElementById('load-input').value=isBW?'':(last.load||'');
+  document.getElementById('log-notes').value='';
+  document.getElementById('log-date').value=toDateStr(new Date());
+  showToast('Last entry copied');
+}
+function updateCopyLastBtn() { document.getElementById('copy-last-btn').disabled=!getData().entries.length; }
+
+// ── HISTORY ──
+function renderHistory() {
+  const data=getData();
+  const filterEx=document.getElementById('filter-exercise').value;
+  const filterFocus=document.getElementById('filter-focus').value;
+  let entries=data.entries.filter(e=>{
+    if(filterEx&&e.exerciseName!==filterEx)return false;
+    if(filterFocus&&e.focus!==filterFocus)return false;
+    return true;
+  });
+  const list=document.getElementById('history-list');
+  if(!entries.length){list.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>No entries yet</p></div>';return;}
+  const groups={};
+  entries.forEach(e=>{if(!groups[e.date])groups[e.date]=[];groups[e.date].push(e);});
+  const sortedDays=Object.keys(groups).sort((a,b)=>b.localeCompare(a));
+  list.innerHTML=sortedDays.map(day=>{
+    const label=fromDateStr(day).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    const rows=groups[day].map(e=>`
+      <div class="history-entry" onclick="openEditLift('${e.id}')">
+        <div class="history-entry-name">${esc(e.exerciseName)}</div>
+        <div class="history-entry-detail">
+          <span class="badge badge-focus">${esc(e.focus)}</span>
+          &nbsp;${e.sets}×${e.reps}&nbsp;·&nbsp;${loadDisplay(e)}
+          &nbsp;·&nbsp;<span class="badge badge-effort-${e.effort.toLowerCase()}">${e.effort}</span>
+        </div>
+        ${e.notes?`<div class="history-entry-notes">${esc(e.notes)}</div>`:''}
+      </div>`).join('');
+    return `<div class="history-day-header">${label}</div>${rows}`;
+  }).join('');
+}
+
+function loadDisplay(e) { return e.loadUnit==='BW'?'BW':`${e.load} ${e.loadUnit}`; }
+
+// ── EDIT LIFT ──
+function openEditLift(id) {
+  const data=getData(), entry=data.entries.find(e=>e.id===id);
+  if(!entry)return;
+  editingEntryId=id;
+  const exOpts=data.exercises.map(ex=>`<option value="${esc(ex)}" ${ex===entry.exerciseName?'selected':''}>${esc(ex)}</option>`).join('');
+  const unitBtns=['lb','kg','BW','plates','band','m'].map(u=>`<button class="seg-btn ${u===entry.loadUnit?'active':''}" data-val="${u}" onclick="editUnitChange(this,'${u}')">${u}</button>`).join('');
+  const focusBtns=['Strength','Hypertrophy','Skill','Maintenance'].map(f=>`<button class="seg-btn ${f===entry.focus?'active':''}" data-val="${f}" onclick="editSegChange(this,'edit-focus-val')">${f==='Maintenance'?'Maint.':f}</button>`).join('');
+  const effortBtns=['Easy','Moderate','Hard'].map(ef=>`<button class="seg-btn ${ef===entry.effort?'active':''}" data-val="${ef}" onclick="editSegChange(this,'edit-effort-val')">${ef}</button>`).join('');
+  const isBW=entry.loadUnit==='BW';
+  document.getElementById('edit-modal-body').innerHTML=`
+    <input type="hidden" id="edit-focus-val" value="${entry.focus}">
+    <input type="hidden" id="edit-effort-val" value="${entry.effort}">
+    <input type="hidden" id="edit-unit-val" value="${entry.loadUnit}">
+    <div class="field"><label>Date</label><input type="date" id="edit-date" value="${entry.date}"></div>
+    <div class="field"><label>Exercise</label><select id="edit-exercise">${exOpts}</select></div>
+    <div class="field"><label>Focus</label><div class="seg">${focusBtns}</div></div>
+    <div class="field"><label>Sets</label>
+      <div class="pill"><button class="pill-btn" onclick="editAdjust('edit-sets-val',1,-1)">−</button><div class="pill-sep"></div><div class="pill-val" id="edit-sets-val">${entry.sets}</div><div class="pill-sep"></div><button class="pill-btn" onclick="editAdjust('edit-sets-val',1,1)">+</button></div>
+    </div>
+    <div class="field"><label>Reps</label>
+      <div class="pill"><button class="pill-btn" onclick="editAdjust('edit-reps-val',1,-1)">−</button><div class="pill-sep"></div><div class="pill-val" id="edit-reps-val">${entry.reps}</div><div class="pill-sep"></div><button class="pill-btn" onclick="editAdjust('edit-reps-val',1,1)">+</button></div>
+    </div>
+    <div class="field"><label>Load</label>
+      <div class="pill"><button class="pill-btn" id="edit-load-minus" ${isBW?'disabled':''} onclick="editAdjustLoad(-5)">−</button><div class="pill-sep"></div><input class="pill-input" id="edit-load-input" type="number" inputmode="decimal" placeholder="0" value="${entry.load||''}" ${isBW?'disabled':''}><div class="pill-sep"></div><button class="pill-btn" id="edit-load-plus" ${isBW?'disabled':''} onclick="editAdjustLoad(5)">+</button></div>
+    </div>
+    <div class="field"><label>Unit</label><div class="seg">${unitBtns}</div></div>
+    <div class="field"><label>Effort</label><div class="seg">${effortBtns}</div></div>
+    <div class="field"><label>Notes</label><textarea id="edit-notes">${esc(entry.notes)}</textarea></div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn-secondary" style="color:var(--danger);border-color:var(--danger)" onclick="deleteLiftEntry('${id}')">Delete</button>
+      <button class="btn-primary" onclick="saveEditLift()">Save Changes</button>
+    </div>`;
+  document.getElementById('edit-modal').classList.add('open');
+}
+function editSegChange(btn,hiddenId){btn.closest('.seg').querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.getElementById(hiddenId).value=btn.dataset.val;}
+function editUnitChange(btn,val){btn.closest('.seg').querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.getElementById('edit-unit-val').value=val;const isBW=val==='BW';document.getElementById('edit-load-input').disabled=isBW;document.getElementById('edit-load-minus').disabled=isBW;document.getElementById('edit-load-plus').disabled=isBW;if(isBW)document.getElementById('edit-load-input').value='';}
+function editAdjust(valId,min,d){const el=document.getElementById(valId);el.textContent=Math.max(min,parseInt(el.textContent)+d);}
+function editAdjustLoad(d){const inp=document.getElementById('edit-load-input');inp.value=Math.max(0,(parseFloat(inp.value)||0)+d)||'';}
+function saveEditLift(){
+  const data=getData(), idx=data.entries.findIndex(e=>e.id===editingEntryId); if(idx===-1)return;
+  const uv=document.getElementById('edit-unit-val').value, isBW=uv==='BW';
+  data.entries[idx]={...data.entries[idx],date:document.getElementById('edit-date').value,exerciseName:document.getElementById('edit-exercise').value,focus:document.getElementById('edit-focus-val').value,sets:parseInt(document.getElementById('edit-sets-val').textContent),reps:parseInt(document.getElementById('edit-reps-val').textContent),load:isBW?0:(parseFloat(document.getElementById('edit-load-input').value)||0),loadUnit:uv,effort:document.getElementById('edit-effort-val').value,notes:document.getElementById('edit-notes').value.trim()};
+  data.entries.sort((a,b)=>b.date.localeCompare(a.date)); saveData(data); closeModal('edit-modal'); renderHistory(); showToast('Entry updated');
+}
+function deleteLiftEntry(id){if(!confirm('Delete this entry?'))return;const data=getData();data.entries=data.entries.filter(e=>e.id!==id);saveData(data);closeModal('edit-modal');renderHistory();showToast('Deleted');}
+
+// ── CARDIO ──
+function selectActivity(act) {
+  cardioActivity=act;
+  ['bike','run','swim'].forEach(a=>{
+    const btn=document.getElementById(`act-${a}`);
+    btn.className='activity-btn'+(a===act?` active-${a}`:'');
+  });
+  document.getElementById('cardio-dist-label').textContent=act==='swim'?'Distance (m)':'Distance (mi)';
+}
+function selectZone(z) {
+  cardioZone=z;
+  document.querySelectorAll('.zone-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.zone)===z));
+}
+
+function saveCardio() {
+  const dateStr=document.getElementById('cardio-date').value;
+  const duration=parseFloat(document.getElementById('cardio-duration').value)||0;
+  const distance=parseFloat(document.getElementById('cardio-distance').value)||0;
+  const notes=document.getElementById('cardio-notes').value.trim();
+  if(!duration&&!distance){showToast('Enter duration or distance');return;}
+  const entry={id:crypto.randomUUID(),date:dateStr,activity:cardioActivity,duration,distance,zone:cardioZone,notes};
+  const data=getData(); data.cardio.unshift(entry); saveData(data);
+  document.getElementById('cardio-duration').value='';
+  document.getElementById('cardio-distance').value='';
+  document.getElementById('cardio-notes').value='';
+  document.getElementById('cardio-date').value=toDateStr(new Date());
+  renderCardioRecent(); showToast('Cardio saved ✓');
+}
+
+function renderCardioRecent() {
+  const data=getData(), recent=data.cardio.slice(0,10);
+  const list=document.getElementById('cardio-recent-list');
+  if(!recent.length){list.innerHTML='<div class="empty"><div class="empty-icon">🏃</div><p>No cardio logged yet</p></div>';return;}
+  const icons={bike:'🚴',run:'🏃',swim:'🏊'};
+  list.innerHTML=recent.map(e=>{
+    const distUnit=e.activity==='swim'?'m':'mi';
+    const parts=[];
+    if(e.duration) parts.push(`${e.duration} min`);
+    if(e.distance) parts.push(`${e.distance} ${distUnit}`);
+    parts.push(`Z${e.zone}`);
+    return `<div class="history-entry" onclick="openEditCardio('${e.id}')">
+      <div class="history-entry-name">${icons[e.activity]||'🏃'} ${e.activity.charAt(0).toUpperCase()+e.activity.slice(1)}</div>
+      <div class="history-entry-detail">
+        <span class="badge badge-${e.activity}">${e.activity}</span>
+        &nbsp;${parts.join(' · ')}
+      </div>
+      <div class="history-entry-notes" style="color:var(--text3);font-size:11px;">${fromDateStr(e.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}${e.notes?` · ${esc(e.notes)}`:''}</div>
+    </div>`;
+  }).join('');
+}
+
+function openEditCardio(id) {
+  const data=getData(), entry=data.cardio.find(e=>e.id===id);
+  if(!entry)return;
+  editingCardioId=id;
+  const actBtns=['bike','run','swim'].map(a=>`<button class="activity-btn ${a===entry.activity?`active-${a}`:'id-act-edit-'+a}" id="edit-act-${a}" onclick="editActChange('${a}')">${{bike:'🚴',run:'🏃',swim:'🏊'}[a]}<br>${a.charAt(0).toUpperCase()+a.slice(1)}</button>`).join('');
+  const zoneBtns=[1,2,3,4,5].map(z=>`<button class="zone-btn ${z===entry.zone?'active':''}" data-zone="${z}" onclick="editZoneChange(this,${z})">Z${z}</button>`).join('');
+  const distLabel=entry.activity==='swim'?'Distance (m)':'Distance (mi)';
+  document.getElementById('edit-cardio-body').innerHTML=`
+    <input type="hidden" id="edit-cardio-act" value="${entry.activity}">
+    <input type="hidden" id="edit-cardio-zone" value="${entry.zone}">
+    <div class="field"><label>Activity</label><div class="activity-selector">${actBtns}</div></div>
+    <div class="field"><label>Date</label><input type="date" id="edit-cardio-date" value="${entry.date}"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div class="field" style="margin-bottom:0"><label>Duration (min)</label><input type="number" id="edit-cardio-dur" inputmode="decimal" value="${entry.duration||''}"></div>
+      <div class="field" style="margin-bottom:0"><label id="edit-dist-label">${distLabel}</label><input type="number" id="edit-cardio-dist" inputmode="decimal" step="0.1" value="${entry.distance||''}"></div>
+    </div>
+    <div class="field"><label>Zone</label><div class="zone-selector">${zoneBtns}</div></div>
+    <div class="field"><label>Notes</label><textarea id="edit-cardio-notes">${esc(entry.notes)}</textarea></div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn-secondary" style="color:var(--danger);border-color:var(--danger)" onclick="deleteCardio('${id}')">Delete</button>
+      <button class="btn-primary" onclick="saveEditCardio()">Save Changes</button>
+    </div>`;
+  document.getElementById('edit-cardio-modal').classList.add('open');
+}
+function editActChange(act){
+  document.getElementById('edit-cardio-act').value=act;
+  ['bike','run','swim'].forEach(a=>{const btn=document.getElementById(`edit-act-${a}`);if(btn)btn.className='activity-btn'+(a===act?` active-${a}`:'');});
+  document.getElementById('edit-dist-label').textContent=act==='swim'?'Distance (m)':'Distance (mi)';
+}
+function editZoneChange(btn,z){btn.closest('.zone-selector').querySelectorAll('.zone-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.getElementById('edit-cardio-zone').value=z;}
+function saveEditCardio(){
+  const data=getData(), idx=data.cardio.findIndex(e=>e.id===editingCardioId); if(idx===-1)return;
+  data.cardio[idx]={...data.cardio[idx],date:document.getElementById('edit-cardio-date').value,activity:document.getElementById('edit-cardio-act').value,duration:parseFloat(document.getElementById('edit-cardio-dur').value)||0,distance:parseFloat(document.getElementById('edit-cardio-dist').value)||0,zone:parseInt(document.getElementById('edit-cardio-zone').value),notes:document.getElementById('edit-cardio-notes').value.trim()};
+  data.cardio.sort((a,b)=>b.date.localeCompare(a.date)); saveData(data); closeModal('edit-cardio-modal'); renderCardioRecent(); showToast('Cardio updated');
+}
+function deleteCardio(id){if(!confirm('Delete this entry?'))return;const data=getData();data.cardio=data.cardio.filter(e=>e.id!==id);saveData(data);closeModal('edit-cardio-modal');renderCardioRecent();showToast('Deleted');}
+
+// ── PROGRESS ──
+function populateProgExercise() { populateExerciseDropdowns(); }
+
+function progMetricChange(btn) {
+  btn.closest('.seg').querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); progMetric=btn.dataset.val; renderProgress();
+}
+function cardioTypeChange(btn) {
+  btn.closest('.seg').querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); cardioProgType=btn.dataset.val; renderCardioProgress();
+}
+function cardioMetricChange(btn) {
+  btn.closest('.seg').querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); cardioProgMetric=btn.dataset.val; renderCardioProgress();
+}
+
+function renderProgress() {
+  const ex=document.getElementById('prog-exercise').value;
+  const canvas=document.getElementById('lift-chart');
+  const empty=document.getElementById('lift-chart-empty');
+  const statsEl=document.getElementById('lift-stats');
+
+  if(!ex){canvas.style.display='none';empty.style.display='block';empty.textContent='Select an exercise to see progression';statsEl.style.display='none';return;}
+
+  const data=getData();
+  const entries=data.entries.filter(e=>e.exerciseName===ex&&e.loadUnit!=='BW'&&e.loadUnit!=='band').sort((a,b)=>a.date.localeCompare(b.date));
+
+  if(entries.length<2){canvas.style.display='none';empty.style.display='block';empty.textContent='Need at least 2 sessions to show a chart';statsEl.style.display='none';return;}
+
+  const labels=entries.map(e=>fromDateStr(e.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+  const values=entries.map(e=>progMetric==='load'?e.load:e.sets*e.reps*e.load);
+  const yLabel=progMetric==='load'?'Load':'Volume (sets×reps×load)';
+
+  canvas.style.display='block'; empty.style.display='none'; statsEl.style.display='grid';
+
+  const maxLoad=Math.max(...entries.map(e=>e.load));
+  const lastLoad=entries[entries.length-1].load;
+  const unit=entries[entries.length-1].loadUnit;
+
+  document.getElementById('stat-max').textContent=`${maxLoad} ${unit}`;
+  document.getElementById('stat-sessions').textContent=entries.length;
+  document.getElementById('stat-recent').textContent=`${lastLoad} ${unit}`;
+
+  if(liftChartInst){liftChartInst.destroy();}
+  liftChartInst=new Chart(canvas,{
+    type:'line',
+    data:{labels,datasets:[{label:yLabel,data:values,borderColor:'#c8f550',backgroundColor:'rgba(200,245,80,0.08)',borderWidth:2,pointBackgroundColor:'#c8f550',pointRadius:4,tension:0.3,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+}
+
+function renderCardioProgress() {
+  const data=getData();
+  const canvas=document.getElementById('cardio-chart');
+  const empty=document.getElementById('cardio-chart-empty');
+  const statsEl=document.getElementById('cardio-stats');
+
+  const filtered=data.cardio.filter(e=>e.activity===cardioProgType).sort((a,b)=>a.date.localeCompare(b.date));
+
+  if(filtered.length<2){canvas.style.display='none';empty.style.display='block';empty.textContent=`No ${cardioProgType} sessions logged yet`;statsEl.style.display='none';return;}
+
+  canvas.style.display='block'; empty.style.display='none'; statsEl.style.display='grid';
+
+  const labels=filtered.map(e=>fromDateStr(e.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+  const values=filtered.map(e=>cardioProgMetric==='distance'?e.distance:e.duration);
+  const colors={bike:'#4da6ff',run:'#ff8c42',swim:'#4dd9c0'};
+  const color=colors[cardioProgType]||'#c8f550';
+  const distUnit=cardioProgType==='swim'?'m':'mi';
+  const totalDist=filtered.reduce((s,e)=>s+e.distance,0).toFixed(1);
+  const avgDist=(filtered.reduce((s,e)=>s+e.distance,0)/filtered.length).toFixed(1);
+
+  document.getElementById('cstat-total').textContent=`${totalDist} ${distUnit}`;
+  document.getElementById('cstat-sessions').textContent=filtered.length;
+  document.getElementById('cstat-avg').textContent=`${avgDist} ${distUnit}`;
+
+  if(cardioChartInst){cardioChartInst.destroy();}
+  cardioChartInst=new Chart(canvas,{
+    type:'line',
+    data:{labels,datasets:[{label:cardioProgMetric,data:values,borderColor:color,backgroundColor:color+'18',borderWidth:2,pointBackgroundColor:color,pointRadius:4,tension:0.3,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+}
+
+// ── EXPORT ──
+function csvEscape(s) {
+  s=String(s??'');
+  if(s.includes(',')||s.includes('"')||s.includes('\n')) return `"${s.replace(/"/g,'""')}"`;
+  return s;
+}
+
+function exportLifting() {
+  const data=getData();
+  if(!data.entries.length){showToast('No lifting data to export');return;}
+  let csv='Date,Exercise,Focus,Sets,Reps,Load,LoadUnit,Effort,Notes\n';
+  data.entries.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+    csv+=[csvEscape(e.date),csvEscape(e.exerciseName),csvEscape(e.focus),e.sets,e.reps,e.load,csvEscape(e.loadUnit),csvEscape(e.effort),csvEscape(e.notes)].join(',')+'\n';
+  });
+  downloadCSV(csv,'liftlog_lifting.csv');
+  showToast('Lifting CSV exported');
+}
+
+function exportCardio() {
+  const data=getData();
+  if(!data.cardio.length){showToast('No cardio data to export');return;}
+  let csv='Date,Activity,Duration_min,Distance,DistanceUnit,Zone,Notes\n';
+  data.cardio.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+    const distUnit=e.activity==='swim'?'m':'mi';
+    csv+=[csvEscape(e.date),csvEscape(e.activity),e.duration,e.distance,distUnit,e.zone,csvEscape(e.notes)].join(',')+'\n';
+  });
+  downloadCSV(csv,'liftlog_cardio.csv');
+  showToast('Cardio CSV exported');
+}
+
+function downloadCSV(content, filename) {
+  const blob=new Blob([content],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; a.style.display='none';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function updateDataSummary() {
+  const data=getData();
+  document.getElementById('data-summary-text').textContent=`${data.entries.length} lifting entries · ${data.cardio.length} cardio sessions · ${data.exercises.length} exercises`;
+}
+
+function clearAllData() {
+  if(!confirm('Delete ALL data permanently? This cannot be undone.'))return;
+  localStorage.removeItem('liftlog_v2');
+  location.reload();
+}
+
+// ── MODAL CLOSE ON OVERLAY ──
+['edit-modal','edit-cardio-modal','rename-modal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal(id);});
+});
+document.getElementById('new-exercise-input').addEventListener('keydown',e=>{if(e.key==='Enter')addExercise();});
+</script>
+</body>
+</html>
