@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0f0f0f">
@@ -322,21 +321,23 @@ select option { background: #1a1a1a; }
         </div>
       </div>
       <button class="btn-primary" onclick="saveCardio()">Save Cardio</button>
-
-      <div style="margin-top:20px;">
-        <div class="section-label">Recent cardio</div>
-        <div class="card" style="padding:0;overflow:hidden;">
-          <div id="cardio-recent-list"></div>
-        </div>
-      </div>
     </div>
 
     <!-- ── HISTORY TAB ── -->
     <div id="page-history" class="page">
       <div class="filter-row">
+        <select id="filter-type" onchange="renderHistory()">
+          <option value="">All types</option>
+          <option value="lift">Lifting</option>
+          <option value="bike">🚴 Bike</option>
+          <option value="run">🏃 Run</option>
+          <option value="swim">🏊 Swim</option>
+        </select>
         <select id="filter-exercise" onchange="renderHistory()">
           <option value="">All exercises</option>
         </select>
+      </div>
+      <div class="filter-row">
         <select id="filter-focus" onchange="renderHistory()">
           <option value="">All focus</option>
           <option>Strength</option><option>Hypertrophy</option><option>Skill</option><option>Maintenance</option>
@@ -412,12 +413,13 @@ select option { background: #1a1a1a; }
       </div>
 
       <div class="export-section">
-        <h3>Export data</h3>
+        <h3>Export / Import</h3>
         <div class="card">
-          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Export your data as CSV — opens in Excel, Google Sheets, or Numbers. Lifting and cardio are exported as separate sheets in separate files.</p>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Export all data (lifting + cardio) as a single CSV. Import merges data from a previous export without overwriting existing entries.</p>
           <div style="display:flex;flex-direction:column;gap:10px;">
-            <button class="btn-primary" onclick="exportLifting()">⬇ Export Lifting Log (CSV)</button>
-            <button class="btn-secondary" onclick="exportCardio()">⬇ Export Cardio Log (CSV)</button>
+            <button class="btn-primary" onclick="exportAll()">⬇ Export All Data (CSV)</button>
+            <button class="btn-secondary" onclick="document.getElementById('csv-import-input').click()">⬆ Import CSV</button>
+            <input type="file" id="csv-import-input" accept=".csv,text/csv" style="display:none" onchange="importCSV(event)">
           </div>
         </div>
       </div>
@@ -502,9 +504,13 @@ select option { background: #1a1a1a; }
 <script>
 // ── STATE ──
 const DEFAULT_EXERCISES = [
-  "Back Extension – Machine","Bench Press – Barbell","Farmer Carry – Dumbbell",
-  "Incline Press – Barbell","Lat Pulldown – Cable","Lat Pulldown – Plate Loaded",
-  "Leg Press – Machine","Pull-up – Band Assisted (Green)","Pull-up – Strict","Seated Row – Cable"
+  "Back Extension – Machine","Bench Press – Barbell","Chest Press – Machine",
+  "Deadlift – Barbell","Face Pulls – Cable","Farmer Carry – DB",
+  "Incline Press – Barbell","Lat Pulldown – Cable","Lat Pulldown – Machine",
+  "Leg Press – Plate","Overhead Press – Barbell","Pec Fly – Cable",
+  "Posterior Deltoid – DB","Pull Up – BW","Push Up – BW",
+  "Seated Row – Cable","Seated Row – Machine","Shoulder Press – Machine",
+  "Squat – Barbell","Squat – BW"
 ];
 
 let sets = 3, reps = 10;
@@ -528,10 +534,11 @@ function saveData(data) { localStorage.setItem('liftlog_v2', JSON.stringify(data
 
 // ── INIT ──
 document.addEventListener('DOMContentLoaded', () => {
-  const today = new Date();
-  document.getElementById('log-date').value = toDateStr(today);
-  document.getElementById('cardio-date').value = toDateStr(today);
-  document.getElementById('header-date').textContent = today.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase();
+  const td = todayStr();
+  document.getElementById('log-date').value = td;
+  document.getElementById('cardio-date').value = td;
+  const now = new Date();
+  document.getElementById('header-date').textContent = now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase();
 
   setupSeg('log-focus', v => focusVal = v);
   setupSeg('log-unit', v => {
@@ -547,13 +554,15 @@ document.addEventListener('DOMContentLoaded', () => {
   populateExerciseDropdowns();
   renderExercises();
   renderHistory();
-  renderCardioRecent();
   updateCopyLastBtn();
   updateDataSummary();
 });
 
 // ── UTILS ──
-function toDateStr(d) { return d.toISOString().split('T')[0]; }
+function toDateStr(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function todayStr() { return toDateStr(new Date()); }
 function fromDateStr(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); }
 function esc(s) {
   return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -593,7 +602,6 @@ function switchTab(tab) {
   if (tab==='history') renderHistory();
   if (tab==='exercises'||tab==='settings') { renderExercises(); updateDataSummary(); }
   if (tab==='progress') { populateProgExercise(); renderProgress(); renderCardioProgress(); }
-  if (tab==='cardio') renderCardioRecent();
 }
 
 // ── STEPPERS ──
@@ -685,7 +693,7 @@ function saveEntry() {
   if(!data.exercises.includes(exercise)) data.exercises.push(exercise);
   saveData(data);
   document.getElementById('log-notes').value='';
-  document.getElementById('log-date').value=toDateStr(new Date());
+  document.getElementById('log-date').value=todayStr();
   updateCopyLastBtn(); showToast('Entry saved ✓');
 }
 
@@ -704,7 +712,7 @@ function copyLast() {
   document.getElementById('load-plus').disabled=isBW;
   document.getElementById('load-input').value=isBW?'':(last.load||'');
   document.getElementById('log-notes').value='';
-  document.getElementById('log-date').value=toDateStr(new Date());
+  document.getElementById('log-date').value=todayStr();
   showToast('Last entry copied');
 }
 function updateCopyLastBtn() { document.getElementById('copy-last-btn').disabled=!getData().entries.length; }
@@ -712,30 +720,70 @@ function updateCopyLastBtn() { document.getElementById('copy-last-btn').disabled
 // ── HISTORY ──
 function renderHistory() {
   const data=getData();
+  const filterType=document.getElementById('filter-type').value;
   const filterEx=document.getElementById('filter-exercise').value;
   const filterFocus=document.getElementById('filter-focus').value;
-  let entries=data.entries.filter(e=>{
-    if(filterEx&&e.exerciseName!==filterEx)return false;
-    if(filterFocus&&e.focus!==filterFocus)return false;
-    return true;
-  });
   const list=document.getElementById('history-list');
-  if(!entries.length){list.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>No entries yet</p></div>';return;}
+
+  // Build unified list of items
+  let items=[];
+
+  // Add lifting entries
+  if(!filterType||filterType==='lift') {
+    data.entries.filter(e=>{
+      if(filterEx&&e.exerciseName!==filterEx)return false;
+      if(filterFocus&&e.focus!==filterFocus)return false;
+      return true;
+    }).forEach(e=>items.push({...e,_type:'lift'}));
+  }
+
+  // Add cardio entries (skip if exercise or focus filter is active)
+  if(!filterEx&&!filterFocus) {
+    const cardioTypes=['bike','run','swim'];
+    data.cardio.filter(e=>{
+      if(filterType&&filterType!=='lift'&&e.activity!==filterType)return false;
+      if(filterType==='lift')return false;
+      return true;
+    }).forEach(e=>items.push({...e,_type:'cardio'}));
+  }
+
+  if(!items.length){list.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>No entries yet</p></div>';return;}
+
+  // Group by date
   const groups={};
-  entries.forEach(e=>{if(!groups[e.date])groups[e.date]=[];groups[e.date].push(e);});
+  items.forEach(e=>{if(!groups[e.date])groups[e.date]=[];groups[e.date].push(e);});
   const sortedDays=Object.keys(groups).sort((a,b)=>b.localeCompare(a));
+  const icons={bike:'🚴',run:'🏃',swim:'🏊'};
+
   list.innerHTML=sortedDays.map(day=>{
     const label=fromDateStr(day).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-    const rows=groups[day].map(e=>`
-      <div class="history-entry" onclick="openEditLift('${e.id}')">
-        <div class="history-entry-name">${esc(e.exerciseName)}</div>
-        <div class="history-entry-detail">
-          <span class="badge badge-focus">${esc(e.focus)}</span>
-          &nbsp;${e.sets}×${e.reps}&nbsp;·&nbsp;${loadDisplay(e)}
-          &nbsp;·&nbsp;<span class="badge badge-effort-${e.effort.toLowerCase()}">${e.effort}</span>
-        </div>
-        ${e.notes?`<div class="history-entry-notes">${esc(e.notes)}</div>`:''}
-      </div>`).join('');
+    const rows=groups[day].map(e=>{
+      if(e._type==='lift') {
+        return `<div class="history-entry" onclick="openEditLift('${e.id}')">
+          <div class="history-entry-name">${esc(e.exerciseName)}</div>
+          <div class="history-entry-detail">
+            <span class="badge badge-focus">${esc(e.focus)}</span>
+            &nbsp;${e.sets}×${e.reps}&nbsp;·&nbsp;${loadDisplay(e)}
+            &nbsp;·&nbsp;<span class="badge badge-effort-${e.effort.toLowerCase()}">${e.effort}</span>
+          </div>
+          ${e.notes?`<div class="history-entry-notes">${esc(e.notes)}</div>`:''}
+        </div>`;
+      } else {
+        const distUnit=e.activity==='swim'?'m':'mi';
+        const parts=[];
+        if(e.duration)parts.push(`${e.duration} min`);
+        if(e.distance)parts.push(`${e.distance} ${distUnit}`);
+        parts.push(`Z${e.zone}`);
+        return `<div class="history-entry" onclick="openEditCardio('${e.id}')">
+          <div class="history-entry-name">${icons[e.activity]||'🏃'} ${e.activity.charAt(0).toUpperCase()+e.activity.slice(1)}</div>
+          <div class="history-entry-detail">
+            <span class="badge badge-${e.activity}">${e.activity}</span>
+            &nbsp;${parts.join(' · ')}
+          </div>
+          ${e.notes?`<div class="history-entry-notes">${esc(e.notes)}</div>`:''}
+        </div>`;
+      }
+    }).join('');
     return `<div class="history-day-header">${label}</div>${rows}`;
   }).join('');
 }
@@ -814,8 +862,8 @@ function saveCardio() {
   document.getElementById('cardio-duration').value='';
   document.getElementById('cardio-distance').value='';
   document.getElementById('cardio-notes').value='';
-  document.getElementById('cardio-date').value=toDateStr(new Date());
-  renderCardioRecent(); showToast('Cardio saved ✓');
+  document.getElementById('cardio-date').value=todayStr();
+  showToast('Cardio saved ✓');
 }
 
 function renderCardioRecent() {
@@ -873,9 +921,9 @@ function editZoneChange(btn,z){btn.closest('.zone-selector').querySelectorAll('.
 function saveEditCardio(){
   const data=getData(), idx=data.cardio.findIndex(e=>e.id===editingCardioId); if(idx===-1)return;
   data.cardio[idx]={...data.cardio[idx],date:document.getElementById('edit-cardio-date').value,activity:document.getElementById('edit-cardio-act').value,duration:parseFloat(document.getElementById('edit-cardio-dur').value)||0,distance:parseFloat(document.getElementById('edit-cardio-dist').value)||0,zone:parseInt(document.getElementById('edit-cardio-zone').value),notes:document.getElementById('edit-cardio-notes').value.trim()};
-  data.cardio.sort((a,b)=>b.date.localeCompare(a.date)); saveData(data); closeModal('edit-cardio-modal'); renderCardioRecent(); showToast('Cardio updated');
+  data.cardio.sort((a,b)=>b.date.localeCompare(a.date)); saveData(data); closeModal('edit-cardio-modal'); renderHistory(); showToast('Cardio updated');
 }
-function deleteCardio(id){if(!confirm('Delete this entry?'))return;const data=getData();data.cardio=data.cardio.filter(e=>e.id!==id);saveData(data);closeModal('edit-cardio-modal');renderCardioRecent();showToast('Deleted');}
+function deleteCardio(id){if(!confirm('Delete this entry?'))return;const data=getData();data.cardio=data.cardio.filter(e=>e.id!==id);saveData(data);closeModal('edit-cardio-modal');renderHistory();showToast('Deleted');}
 
 // ── PROGRESS ──
 function populateProgExercise() { populateExerciseDropdowns(); }
@@ -960,34 +1008,84 @@ function renderCardioProgress() {
   });
 }
 
-// ── EXPORT ──
+// ── EXPORT / IMPORT ──
 function csvEscape(s) {
   s=String(s??'');
   if(s.includes(',')||s.includes('"')||s.includes('\n')) return `"${s.replace(/"/g,'""')}"`;
   return s;
 }
 
-function exportLifting() {
+function exportAll() {
   const data=getData();
-  if(!data.entries.length){showToast('No lifting data to export');return;}
-  let csv='Date,Exercise,Focus,Sets,Reps,Load,LoadUnit,Effort,Notes\n';
+  if(!data.entries.length&&!data.cardio.length){showToast('No data to export');return;}
+  let csv='LIFTING\n';
+  csv+='Date,Exercise,Focus,Sets,Reps,Load,LoadUnit,Effort,Notes\n';
   data.entries.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
     csv+=[csvEscape(e.date),csvEscape(e.exerciseName),csvEscape(e.focus),e.sets,e.reps,e.load,csvEscape(e.loadUnit),csvEscape(e.effort),csvEscape(e.notes)].join(',')+'\n';
   });
-  downloadCSV(csv,'liftlog_lifting.csv');
-  showToast('Lifting CSV exported');
+  csv+='\nCARDIO\n';
+  csv+='Date,Activity,Duration_min,Distance,DistanceUnit,Zone,Notes\n';
+  data.cardio.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+    const du=e.activity==='swim'?'m':'mi';
+    csv+=[csvEscape(e.date),csvEscape(e.activity),e.duration,e.distance,du,e.zone,csvEscape(e.notes)].join(',')+'\n';
+  });
+  downloadCSV(csv,'liftlog_export.csv');
+  showToast('Data exported ✓');
 }
 
-function exportCardio() {
-  const data=getData();
-  if(!data.cardio.length){showToast('No cardio data to export');return;}
-  let csv='Date,Activity,Duration_min,Distance,DistanceUnit,Zone,Notes\n';
-  data.cardio.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
-    const distUnit=e.activity==='swim'?'m':'mi';
-    csv+=[csvEscape(e.date),csvEscape(e.activity),e.duration,e.distance,distUnit,e.zone,csvEscape(e.notes)].join(',')+'\n';
-  });
-  downloadCSV(csv,'liftlog_cardio.csv');
-  showToast('Cardio CSV exported');
+function importCSV(event) {
+  const file=event.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try {
+      const lines=e.target.result.split('\n').map(l=>l.trim()).filter(Boolean);
+      const data=getData();
+      let section=null;
+      const existingLiftIds=new Set(data.entries.map(e=>e.date+'|'+e.exerciseName+'|'+e.sets+'|'+e.reps+'|'+e.load));
+      const existingCardioIds=new Set(data.cardio.map(e=>e.date+'|'+e.activity+'|'+e.duration+'|'+e.distance));
+
+      for(const line of lines) {
+        if(line==='LIFTING'){section='lifting';continue;}
+        if(line==='CARDIO'){section='cardio';continue;}
+        if(line.startsWith('Date,')||line.startsWith('LIFTING')||line.startsWith('CARDIO'))continue;
+        const cols=parseCSVLine(line);
+        if(section==='lifting'&&cols.length>=9){
+          const [date,exercise,focus,sets,reps,load,loadUnit,effort,notes]=cols;
+          const key=date+'|'+exercise+'|'+sets+'|'+reps+'|'+load;
+          if(!existingLiftIds.has(key)&&date&&exercise){
+            data.entries.push({id:crypto.randomUUID(),date,exerciseName:exercise,focus,sets:parseInt(sets)||3,reps:parseInt(reps)||10,load:parseFloat(load)||0,loadUnit,effort,notes:notes||''});
+            existingLiftIds.add(key);
+            if(!data.exercises.includes(exercise))data.exercises.push(exercise);
+          }
+        }
+        if(section==='cardio'&&cols.length>=6){
+          const [date,activity,duration,distance,,zone,notes]=cols;
+          const key=date+'|'+activity+'|'+duration+'|'+distance;
+          if(!existingCardioIds.has(key)&&date&&activity){
+            data.cardio.push({id:crypto.randomUUID(),date,activity,duration:parseFloat(duration)||0,distance:parseFloat(distance)||0,zone:parseInt(zone)||3,notes:notes||''});
+            existingCardioIds.add(key);
+          }
+        }
+      }
+      data.entries.sort((a,b)=>b.date.localeCompare(a.date));
+      data.cardio.sort((a,b)=>b.date.localeCompare(a.date));
+      saveData(data);
+      populateExerciseDropdowns(); renderHistory(); renderExercises(); updateDataSummary();
+      showToast('Import complete ✓');
+    } catch(err){ showToast('Import failed — check file format'); }
+  };
+  reader.readAsText(file);
+  event.target.value='';
+}
+
+function parseCSVLine(line) {
+  const cols=[]; let field='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(inQ){if(c==='"'&&line[i+1]==='"'){field+='"';i++;}else if(c==='"')inQ=false;else field+=c;}
+    else{if(c==='"')inQ=true;else if(c===','){cols.push(field);field='';}else field+=c;}
+  }
+  cols.push(field); return cols;
 }
 
 function downloadCSV(content, filename) {
